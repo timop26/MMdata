@@ -15,7 +15,7 @@ scrape_team_ids <- function() {
       stringr::str_match_all(pattern="href=\"(.*?)\">") %>%
       .[[1]] %>%
       .[, 2] %>%
-      substring(14)
+      stringr::str_sub(start=14, end=-2)
   )
 }
 
