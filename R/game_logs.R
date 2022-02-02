@@ -1,7 +1,16 @@
 # Base URL to basketball-reference college basketball pages
 base_url <- "https://www.sports-reference.com/cbb/schools/"
 
-# Function to read in game logs by team and year
+
+#' Scrape game logs by team and year
+#'
+#' @param team_id Team ID for which to scrape game logs
+#' @param year Year for which to scrape game logs
+#'
+#' @return Data frame with one row per game. Includes opponent and team stats
+#' @export
+#'
+#' @examples
 scrape_game_logs <- function(team_id, year){
   # Game log URL
   url <- paste0(base_url, team_id, "/", year, "-gamelogs.html")
@@ -104,7 +113,7 @@ scrape_game_logs <- function(team_id, year){
   return(game_logs)
 }
 
-team_stats <- function(game_logs, team_id) {
+team_stats <- function(game_logs, team_id, year) {
   team_df <- game_logs[game_logs$team_id == team_id, ]
   team_df <- team_df[complete.cases(team_df), ]
   stats <- data.frame(
@@ -118,6 +127,9 @@ team_stats <- function(game_logs, team_id) {
     DRTG=sum(team_df$O_PTS) / sum(team_df$poss),
     DRTG_l=quantile(team_df$O_PTS / team_df$poss, 0.1, names=FALSE),
     DRTG_u=quantile(team_df$O_PTS / team_df$poss, 0.9, names=FALSE),
+    # NTRG
+    NRTG = sum(team_df$TM_PTS) / sum(team_df$poss) -
+      sum(team_df$O_PTS) / sum(team_df$poss),
     # eFG
     eFG.=eFG(sum(team_df$TM_FG), sum(team_df$TM_3P), sum(team_df$TM_FGA)),
     eFG._l=quantile(eFG(team_df$TM_FG, team_df$TM_3P, team_df$TM_FGA), 0.1, names=FALSE),
@@ -139,7 +151,7 @@ team_stats <- function(game_logs, team_id) {
     TRB._l=quantile(TRB(team_df$TM_TRB, team_df$O_TRB), 0.1, names=FALSE),
     TRB._u=quantile(TRB(team_df$TM_TRB, team_df$O_TRB), 0.9, names=FALSE),
     # AST
-    AST..=AST(sum(team_df$TM_AST), sum(team_df$TM_FG)),
+    AST.=AST(sum(team_df$TM_AST), sum(team_df$TM_FG)),
     AST._l=quantile(AST(team_df$TM_AST, team_df$TM_FG), 0.1, names=FALSE),
     AST._u=quantile(AST(team_df$TM_AST, team_df$TM_FG), 0.9, names=FALSE),
     # STL
@@ -216,7 +228,15 @@ team_stats <- function(game_logs, team_id) {
 }
 
 
-team_stats <- function(year) {
+#' Scraping team stats for a given year
+#'
+#' @param year Year for which to scrape team stats
+#'
+#' @return Data frame with one row per team and their statistics
+#' @export
+#'
+#' @examples
+all_teams_stats <- function(year) {
   # Scraping teams table
   teams_table <- scrape_teams_table()
   # Keeping only teams that were D1 the year of interest
@@ -258,8 +278,19 @@ team_stats <- function(year) {
   # Filtering out games against non-DI schools
   d1_games <- d1_games[d1_games$Date %>% as.Date() <= selection_sunday, ]
 
-  all_stats <- lapply(unique(d1_games$Tm), )
+  all_stats <- lapply(
+    unique(d1_games$team_id),
+    function(x) team_stats(d1_games, x, year)
+  ) %>%
+    do.call(what="rbind")
 
+  stat_cats <- c("ORTG", "DRTG", "NRTG", "eFG.", "TS.", "ORB.", "DRB.", "TRB.",
+                 "AST.", "STL.", "BLK.", "TOV.", "FTr.", "threePr", "threeP.",
+                 "twoP.", "pace", "O_eFG.", "O_TS.", "O_AST.", "O_STL.",
+                 "O_BLK.", "O_TOV.", "O_FTr.", "O_TPr.", "O_threeP.", "O_twoP.")
+  all_stats[, stat_cats] <- scale(all_stats[, stat_cats])
+
+  return(all_stats)
 }
 
 
