@@ -62,7 +62,7 @@ calculate_height <- function(height) {
 #' @examples
 school_summary_by_year <- function(team_id, year) {
   # URL
-  url <- paste0(base_url, team_id, year, ".html")
+  url <- paste0(base_url, team_id, "/", year, ".html")
   # Extracting the html in text form
   text_html <- rvest::read_html(url) %>%
     rvest::html_nodes("div") %>%
@@ -108,12 +108,17 @@ school_summary_by_year <- function(team_id, year) {
 
   # Scraping player totals for input team for conference games
   player_totals <- rvest::read_html(url) %>%
-    rvest::html_nodes("#all_totals") %>% # #all_totals_conf for conference game totals
-    rvest::html_nodes(xpath='comment()') %>%
-    rvest::html_text() %>%
-    rvest::read_html() %>%
-    rvest::html_node('table') %>%
-    rvest::html_table()
+    rvest::html_nodes("#all_totals_players") %>%
+    rvest::html_table() %>%
+    .[[1]]
+
+  # Keeping the rows for all games rather than just conference games
+  if(length(which(player_totals$Rk == "")) != 0) {
+    player_totals <- player_totals[1:(which(player_totals$Rk == "") - 1), ]
+  }
+  # Making numeric columns numeric
+  player_totals[, -2] <- apply(player_totals[, -2], 2, as.numeric)
+
   # Calculating scoring Gini index
   gini <- DescTools::Gini(player_totals$PTS, unbiased=FALSE)
 
