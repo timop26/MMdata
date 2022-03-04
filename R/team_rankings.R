@@ -21,13 +21,13 @@ reshape_by_week <- function(long_data, week, year) {
 
 fix_colnames <- function(data, last=FALSE) {
   data <- data[, -1]
-  colnames_to_change <- colnames(data)[!colnames(data) %in% c("Week", "year", "team_ids")]
+  colnames_to_change <- colnames(data)[!colnames(data) %in% c("Week", "year", "team_id")]
   if(last) {
     new_names <- paste0(colnames_to_change, "_last")
   } else {
     new_names <- paste(colnames_to_change, sep="_", unique(data$Week))
   }
-  colnames(data)[!colnames(data) %in% c("Week", "year", "team_ids")] <- new_names
+  colnames(data)[!colnames(data) %in% c("Week", "year", "team_id")] <- new_names
   return(data)
 }
 

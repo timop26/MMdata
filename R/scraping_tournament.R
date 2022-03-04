@@ -1,47 +1,8 @@
-
-#' Create lookup table between team names and IDs for a given year
-#'
-#' @param year Year for which to create lookup table between team names and IDs
-#'
-#' @return Data frame with team names and corresponding team IDs
-#' @export
-#'
-#' @examples
-team_name_id_lookup <- function(year) {
-  # URL for NCAA postseason of interest
-  url <- paste0("https://www.sports-reference.com/cbb/postseason/", year, "-ncaa.html")
-  # Raw html code as text
-  html_raw <- readLines(url) %>% paste0(collapse = "&")
-  # Pattern to find play-in team IDs and team names
-  play_in_match_pattern <- "href='/cbb/schools/(.*?)/'>(.*?)</a>"
-  # Creating play-in team lookup table
-  play_in_lookup <- stringr::str_match_all(html_raw, pattern=play_in_match_pattern) %>%
-    .[[1]] %>%
-    .[1:8, 2:3] %>%
-    as.data.frame()
-
-  # Fixing error with ampersand
-  play_in_lookup[, 2] <- play_in_lookup[, 2] %>%
-    stringr::str_replace("&amp;", "&")
-
-  # Pattern to find round of 64 team IDs and names
-  f64_match_pattern <- "href=\"/cbb/schools/(.*?)/(.*?).html\">(.*?)</a>"
-  # Creating round of 64 lookup table
-  team_id_lookup <- stringr::str_match_all(html_raw, pattern=f64_match_pattern) %>%
-    .[[1]] %>%
-    .[-1, c(2, 4)] %>%
-    as.data.frame()
-
-  # Combining tables
-  team_id_lookup <- rbind(play_in_lookup, team_id_lookup) %>%
-    unique()
-  colnames(team_id_lookup) <- c("team_id", "team_name")
-
-  return(team_id_lookup)
-}
+# Lookup table for team names
+lookup_table <- read.csv("tourney_name_mappings.csv")
 
 # Base URL to scrape NCAA tournament results
-base_url <- "https://basketball.realgm.com/ncaa/tournaments/Post-Season/NCAA-Tournament/1/bracket/"
+base_url_tourney <- "https://basketball.realgm.com/ncaa/tournaments/Post-Season/NCAA-Tournament/1/bracket/"
 
 #' Scraping NCAA tournament results for given year
 #'
@@ -58,7 +19,7 @@ scrape_tournament <- function(year) {
     code=c(433, 489, 546, 610, 677, 708, 803, 872, 936, 1029, 1128)
   )
   # Full URL
-  url <- paste0(base_url, year, "/", year_code$code[year_code$year == year])
+  url <- paste0(base_url_tourney, year, "/", year_code$code[year_code$year == year])
   tournament_data <- url %>%
     rvest::read_html() %>%
     rvest::html_nodes("table") %>%
@@ -89,8 +50,6 @@ scrape_tournament <- function(year) {
   # Adding year
   tournament_data$year <- year
 
-  # Creating lookup table for team names and team IDs
-  lookup_table <- team_name_id_lookup(year)
   # Merging tournament table and lookup table to add the team ID to table
   tournament_data <- merge(tournament_data, lookup_table, by.x="home_team", by.y="team_name")
   colnames(tournament_data)[colnames(tournament_data) == "team_id"] <- "home_team_id"
@@ -104,3 +63,4 @@ scrape_tournament <- function(year) {
                 "away_score", "home_win", "score_diff", "Venue")
   return(tournament_data[!is.na(tournament_data$home_team), col_keep] %>% as.data.frame())
 }
+
