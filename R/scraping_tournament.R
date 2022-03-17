@@ -12,7 +12,7 @@ base_url_tourney <- "https://basketball.realgm.com/ncaa/tournaments/Post-Season/
 #' @export
 #'
 #' @examples
-scrape_tournament <- function(year) {
+scrape_tournament <- function(year, table_index=173) {
   # Data frame relating years to code
   year_code <- data.frame(
     year=c(2011:2019, 2021:2022),
@@ -24,7 +24,7 @@ scrape_tournament <- function(year) {
     rvest::read_html() %>%
     rvest::html_nodes("table") %>%
     rvest::html_table(fill=TRUE) %>%
-    .[[173]]
+    .[[table_index]]
   tournament_data$home_seed <- readr::parse_number(tournament_data$`Home Team`)
   # Extracting away seed
   tournament_data$away_seed <- readr::parse_number(tournament_data$`Away Team`)

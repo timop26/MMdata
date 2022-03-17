@@ -54,13 +54,31 @@ system.time(all_data <- combine_data(c(2011:2019, 2021)))
 
 # Reading in tournament data
 tournaments <- lapply(c(2011:2019, 2021), scrape_tournament) %>% do.call(what="rbind")
-tournaments$row <- 1:nrow(tournaments)
-tourney_cols <- c("row", "home_team_id", "away_team_id", "year", "round", "seed_diff", "score_diff", "home_win")
-home_team_stats <- merge(tournaments[, tourney_cols], all_data, by.x=c("home_team_id", "year"), by.y=c("team_id", "year"))
-away_team_stats <- merge(tournaments[, tourney_cols], all_data, by.x=c("away_team_id", "year"), by.y=c("team_id", "year"))
-home_team_stats <- home_team_stats[order(home_team_stats$row), ]
-away_team_stats <- away_team_stats[order(away_team_stats$row), ]
-all_training <- home_team_stats
-all_training[, 9:ncol(all_training)] <- home_team_stats[, 9:ncol(all_training)] - away_team_stats[, 9:ncol(all_training)]
+colnames(tournaments) <- str_replace(colnames(tournaments), "home_team", "team_a")
+colnames(tournaments) <- str_replace(colnames(tournaments), "away_team", "team_b")
+colnames(tournaments) <- str_replace(colnames(tournaments), "home", "team_a")
+colnames(tournaments) <- str_replace(colnames(tournaments), "away", "team_b")
 
-write.csv(all_training, "all_training.csv", row.names=FALSE)
+tournament_b <- tournaments
+tournament_b$team_a_id <- tournaments$team_b_id
+tournament_b$team_b_id <- tournaments$team_a_id
+tournament_b$team_a_seed <- tournaments$team_b_seed
+tournament_b$team_b_seed <- tournaments$team_a_seed
+tournament_b$team_a_score <- tournaments$team_b_score
+tournament_b$team_b_score <- tournaments$team_a_score
+tournament_b$team_a_win <- 1 - tournaments$team_a_win
+tournament_b$score_diff <- tournaments$score_diff * -1
+tournament_b$seed_diff <- tournament_b$team_a_seed - tournament_b$team_b_seed
+
+tournaments <- rbind(tournaments, tournament_b)
+
+tournaments$row <- 1:nrow(tournaments)
+tourney_cols <- c("row", "team_a_id", "team_b_id", "year", "round", "seed_diff", "score_diff", "team_a_win")
+team_a_stats <- merge(tournaments[, tourney_cols], all_data, by.x=c("team_a_id", "year"), by.y=c("team_id", "year"))
+team_b_stats <- merge(tournaments[, tourney_cols], all_data, by.x=c("team_b_id", "year"), by.y=c("team_id", "year"))
+team_a_stats <- team_a_stats[order(team_a_stats$row), ]
+team_b_stats <- team_b_stats[order(team_b_stats$row), ]
+all_training <- team_a_stats
+all_training[, 9:ncol(all_training)] <- team_a_stats[, 9:ncol(all_training)] - team_b_stats[, 9:ncol(all_training)]
+
+write.csv(all_training, "all_training_double.csv", row.names=FALSE)
